@@ -2,8 +2,6 @@
 
 A kid-friendly, web-based 3D escape room game where players must find hidden "67" references before time runs out!
 
-![Game Preview](./preview.png)
-
 ## 🎮 Game Concept
 
 - Player is locked in a 3D room with a countdown timer
