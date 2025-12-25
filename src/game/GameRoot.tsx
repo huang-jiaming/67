@@ -4,7 +4,7 @@
  * Acts as the root state machine for game phases
  */
 
-import { Suspense, useEffect, useCallback } from 'react'
+import { useEffect, useCallback, Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { useGameStore, useGamePhase, useCurrentLevel } from './state'
 import { StartScreen, PauseMenu, WinScreen, LoseScreen, EndingTransition } from './components/Screens'
@@ -58,7 +58,12 @@ export function GameRoot() {
           <Canvas
             className="game-canvas"
             shadows
-            camera={{ fov: 70, near: 0.1, far: 100 }}
+            camera={{ 
+              fov: 70, 
+              near: 0.1, 
+              far: 100,
+              position: [0, 1.6, 4],
+            }}
             style={{
               position: 'fixed',
               top: 0,

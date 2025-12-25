@@ -16,7 +16,7 @@ const LEVEL_BEDROOM: LevelConfig = {
   description: 'Find the hidden 67s in this cozy bedroom!',
   roomSize: [12, 4, 12],
   playerSpawn: [0, 1.5, 4],
-  playerRotation: Math.PI,
+  playerRotation: 0, // Look toward -Z (into room)
   wallColor: '#87CEEB', // Sky blue
   floorColor: '#DEB887', // Burlywood (wooden floor)
   ceilingColor: '#FFFAF0', // Floral white
@@ -141,7 +141,7 @@ const LEVEL_LIVING_ROOM: LevelConfig = {
   description: 'The living room has secrets too!',
   roomSize: [14, 4.5, 10],
   playerSpawn: [0, 1.5, 3],
-  playerRotation: Math.PI,
+  playerRotation: 0, // Look toward -Z (into room)
   wallColor: '#F5DEB3', // Wheat
   floorColor: '#2F4F4F', // Dark slate (carpet)
   ceilingColor: '#FFFAF0',
@@ -276,7 +276,7 @@ const LEVEL_CLASSROOM: LevelConfig = {
   description: 'Even school has hidden 67s!',
   roomSize: [16, 4, 12],
   playerSpawn: [0, 1.5, 4],
-  playerRotation: Math.PI,
+  playerRotation: 0, // Look toward -Z (into room)
   wallColor: '#E8E8D0', // Cream
   floorColor: '#8B7355', // Tan (wood)
   ceilingColor: '#F5F5F5',

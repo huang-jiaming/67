@@ -117,8 +117,6 @@ function DigitalClockTarget({ opacity, emissive }: { opacity: number; emissive: 
         color="#00ff00"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/digital-7.ttf"
-        characters="0123456789:"
       >
         6:07
       </Text>
