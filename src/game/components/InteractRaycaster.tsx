@@ -7,7 +7,7 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useGameStore, useGamePhase, useTargets } from '../state'
+import { useGameStore, useGamePhase, useTargets, useIsMobile } from '../state'
 import { Target } from '../types'
 import { Vector3Tuple } from 'three'
 import { playTargetFound, playHoverStart, playHoldProgress } from './Sfx'
@@ -54,6 +54,8 @@ export function InteractRaycaster({
   const openChest = useGameStore((s) => s.openChest)
   const chestOpen = useGameStore((s) => s.chestOpen)
   const isPointerLocked = useGameStore((s) => s.isPointerLocked)
+  const isMobile = useIsMobile()
+  const mobileGameStarted = useGameStore((s) => s.mobileGameStarted)
   
   // Raycaster
   const raycaster = useRef(new THREE.Raycaster())
@@ -76,16 +78,28 @@ export function InteractRaycaster({
     })
   }, [hoveredTarget, holdProgress, nearChest])
   
+  // Check if player is actively playing (pointer locked on desktop, game started on mobile)
+  const isPlayerActive = isMobile ? mobileGameStarted : isPointerLocked
+  
   // Mouse/touch handlers
-  const handleMouseDown = useCallback(() => {
-    if (phase !== 'playing' || !isPointerLocked || chestOpen) return
+  const handleMouseDown = useCallback((e: MouseEvent | TouchEvent) => {
+    if (phase !== 'playing' || !isPlayerActive || chestOpen) return
+    
+    // On mobile, check if touch is on UI elements
+    if (isMobile && 'touches' in e) {
+      const touch = e.touches[0]
+      const target = touch?.target as HTMLElement
+      if (target?.closest('.mobile-controls, .hud, .tool-slot, .mobile-action-btn, .mobile-pause-btn')) {
+        return
+      }
+    }
     
     if (hoveredTarget && !hoveredTarget.found) {
       setIsHolding(true)
       holdStartTime.current = Date.now()
       lastProgressSound.current = 0
     }
-  }, [phase, isPointerLocked, chestOpen, hoveredTarget])
+  }, [phase, isPlayerActive, chestOpen, hoveredTarget, isMobile])
   
   const handleMouseUp = useCallback(() => {
     setIsHolding(false)
@@ -94,29 +108,34 @@ export function InteractRaycaster({
     lastProgressSound.current = 0
   }, [])
   
-  // E key for chest interaction
+  // E key for chest interaction (desktop) - mobile uses button in HUD
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.code === 'KeyE' && nearChest && !chestOpen && phase === 'playing' && isPointerLocked) {
+    if (e.code === 'KeyE' && nearChest && !chestOpen && phase === 'playing' && isPlayerActive) {
       openChest()
-      // Exit pointer lock when opening chest
-      document.exitPointerLock()
+      // Exit pointer lock when opening chest (desktop only)
+      if (!isMobile) {
+        document.exitPointerLock()
+      }
     }
-  }, [nearChest, chestOpen, phase, openChest, isPointerLocked])
+  }, [nearChest, chestOpen, phase, openChest, isPlayerActive, isMobile])
   
   useEffect(() => {
-    document.addEventListener('mousedown', handleMouseDown)
+    const onMouseDown = (e: MouseEvent) => handleMouseDown(e)
+    const onTouchStart = (e: TouchEvent) => handleMouseDown(e)
+    
+    document.addEventListener('mousedown', onMouseDown)
     document.addEventListener('mouseup', handleMouseUp)
     document.addEventListener('keydown', handleKeyDown)
     
-    // Touch support
-    document.addEventListener('touchstart', handleMouseDown)
+    // Touch support for mobile
+    document.addEventListener('touchstart', onTouchStart, { passive: false })
     document.addEventListener('touchend', handleMouseUp)
     
     return () => {
-      document.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('mousedown', onMouseDown)
       document.removeEventListener('mouseup', handleMouseUp)
       document.removeEventListener('keydown', handleKeyDown)
-      document.removeEventListener('touchstart', handleMouseDown)
+      document.removeEventListener('touchstart', onTouchStart)
       document.removeEventListener('touchend', handleMouseUp)
     }
   }, [handleMouseDown, handleMouseUp, handleKeyDown])

@@ -1,14 +1,15 @@
 /**
  * PlayerController.tsx - First-Person Player Controls
- * Handles pointer lock, WASD movement, and mouse look
+ * Handles pointer lock, WASD movement, mouse look, and mobile touch controls
  * Optimized for performance with proper collision detection
  */
 
 import { useRef, useEffect, useCallback, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useGameStore, useGamePhase } from '../state'
+import { useGameStore, useGamePhase, useIsMobile, useMobileJoystick } from '../state'
 import { Vector3Tuple } from 'three'
+import { useTouchLook } from './MobileControls'
 
 interface PlayerControllerProps {
   spawnPosition: Vector3Tuple
@@ -19,11 +20,20 @@ interface PlayerControllerProps {
 // Movement constants
 const MOVE_SPEED = 4
 const LOOK_SPEED = 0.002
+const TOUCH_LOOK_SPEED = 0.003 // Slightly faster for touch
 const GRAVITY = -15
 const JUMP_FORCE = 6
 const PLAYER_HEIGHT = 1.6
 const PLAYER_RADIUS = 0.5
 const WALL_BUFFER = 0.8 // Extra buffer from walls
+
+// Joystick area bounds (for excluding from touch look)
+const JOYSTICK_BOUNDS = {
+  left: 0,
+  top: 0,
+  right: 160, // 120px joystick + 20px padding + extra margin
+  bottom: 0, // Will be calculated from window height
+}
 
 /**
  * First-person player controller with pointer lock
@@ -39,6 +49,9 @@ export function PlayerController({
   const setPointerLocked = useGameStore((s) => s.setPointerLocked)
   const isPointerLocked = useGameStore((s) => s.isPointerLocked)
   const chestOpen = useGameStore((s) => s.chestOpen)
+  const isMobile = useIsMobile()
+  const mobileJoystick = useMobileJoystick()
+  const mobileGameStarted = useGameStore((s) => s.mobileGameStarted)
   
   // Pre-allocated vectors to avoid garbage collection
   const velocity = useRef(new THREE.Vector3())
@@ -50,8 +63,31 @@ export function PlayerController({
   
   // Input state
   const keys = useRef<Set<string>>(new Set())
-  const isTouching = useRef(false)
-  const touchStart = useRef({ x: 0, y: 0 })
+  
+  // Calculate joystick bounds for touch look exclusion
+  const joystickBounds = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    return {
+      left: JOYSTICK_BOUNDS.left,
+      top: window.innerHeight - 220, // 120px joystick + 100px from bottom
+      right: JOYSTICK_BOUNDS.right,
+      bottom: window.innerHeight,
+    }
+  }, [])
+  
+  // Touch look handler for mobile
+  const handleTouchLook = useCallback((deltaX: number, deltaY: number) => {
+    if (phase !== 'playing' || chestOpen) return
+    
+    euler.current.y -= deltaX * TOUCH_LOOK_SPEED
+    euler.current.x -= deltaY * TOUCH_LOOK_SPEED
+    euler.current.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, euler.current.x))
+    
+    camera.rotation.copy(euler.current)
+  }, [camera, phase, chestOpen])
+  
+  // Use the touch look hook for mobile
+  useTouchLook(handleTouchLook, joystickBounds)
   
   // Memoize room bounds for collision - with proper buffer
   const bounds = useMemo(() => ({
@@ -109,69 +145,38 @@ export function PlayerController({
     keys.current.delete(e.code)
   }, [])
   
-  // Touch handlers for mobile
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (e.touches.length === 1) {
-      isTouching.current = true
-      touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    }
-  }, [])
-  
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!isTouching.current || phase !== 'playing') return
-    
-    const touch = e.touches[0]
-    const deltaX = touch.clientX - touchStart.current.x
-    const deltaY = touch.clientY - touchStart.current.y
-    
-    euler.current.y -= deltaX * LOOK_SPEED * 0.5
-    euler.current.x -= deltaY * LOOK_SPEED * 0.5
-    euler.current.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, euler.current.x))
-    
-    camera.rotation.copy(euler.current)
-    
-    touchStart.current = { x: touch.clientX, y: touch.clientY }
-  }, [camera, phase])
-  
-  const handleTouchEnd = useCallback(() => {
-    isTouching.current = false
-  }, [])
-  
-  // Set up event listeners
+  // Set up event listeners (desktop only - mobile uses MobileControls)
   useEffect(() => {
     const canvas = gl.domElement
     
-    canvas.addEventListener('click', handleClick)
-    document.addEventListener('pointerlockchange', handlePointerLockChange)
-    document.addEventListener('mousemove', handleMouseMove)
+    // Only set up pointer lock on desktop
+    if (!isMobile) {
+      canvas.addEventListener('click', handleClick)
+      document.addEventListener('pointerlockchange', handlePointerLockChange)
+      document.addEventListener('mousemove', handleMouseMove)
+    }
+    
+    // Keyboard works on both (external keyboards on tablets)
     document.addEventListener('keydown', handleKeyDown)
     document.addEventListener('keyup', handleKeyUp)
     
-    // Mobile
-    canvas.addEventListener('touchstart', handleTouchStart)
-    canvas.addEventListener('touchmove', handleTouchMove)
-    canvas.addEventListener('touchend', handleTouchEnd)
-    
     return () => {
-      canvas.removeEventListener('click', handleClick)
-      document.removeEventListener('pointerlockchange', handlePointerLockChange)
-      document.removeEventListener('mousemove', handleMouseMove)
+      if (!isMobile) {
+        canvas.removeEventListener('click', handleClick)
+        document.removeEventListener('pointerlockchange', handlePointerLockChange)
+        document.removeEventListener('mousemove', handleMouseMove)
+      }
       document.removeEventListener('keydown', handleKeyDown)
       document.removeEventListener('keyup', handleKeyUp)
-      canvas.removeEventListener('touchstart', handleTouchStart)
-      canvas.removeEventListener('touchmove', handleTouchMove)
-      canvas.removeEventListener('touchend', handleTouchEnd)
     }
   }, [
     gl,
+    isMobile,
     handleClick,
     handlePointerLockChange,
     handleMouseMove,
     handleKeyDown,
     handleKeyUp,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
   ])
   
   // Movement update loop - optimized to avoid allocations
@@ -181,13 +186,16 @@ export function PlayerController({
     // Clamp delta to avoid large jumps
     const dt = Math.min(delta, 0.05)
     
-    // Only move if pointer is locked (or on mobile)
-    const canMove = isPointerLocked || isTouching.current
+    // Check if player can move
+    // Desktop: requires pointer lock
+    // Mobile: requires game started
+    const canMove = isMobile ? mobileGameStarted : isPointerLocked
     
     // Calculate movement direction (reuse existing vector)
     direction.current.set(0, 0, 0)
     
     if (canMove) {
+      // Keyboard input (works on both desktop and mobile with external keyboard)
       if (keys.current.has('KeyW') || keys.current.has('ArrowUp')) {
         direction.current.z -= 1
       }
@@ -199,6 +207,12 @@ export function PlayerController({
       }
       if (keys.current.has('KeyD') || keys.current.has('ArrowRight')) {
         direction.current.x += 1
+      }
+      
+      // Mobile joystick input - add to keyboard input
+      if (isMobile && (mobileJoystick.x !== 0 || mobileJoystick.y !== 0)) {
+        direction.current.x += mobileJoystick.x
+        direction.current.z -= mobileJoystick.y // Forward is negative Z
       }
     }
     

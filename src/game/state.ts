@@ -20,6 +20,18 @@ import {
 import { createRNG, createGameSeed, RNG } from './rng'
 import { LEVELS } from './levels/levelConfigs'
 
+/** Mobile detection utility */
+export const isMobile = (): boolean => {
+  if (typeof window === 'undefined') return false
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 'ontouchstart' in window
+}
+
+/** Joystick input state */
+export interface JoystickInput {
+  x: number // -1 to 1 (left/right)
+  y: number // -1 to 1 (forward/backward)
+}
+
 /** Core game state */
 interface GameState {
   // Game phase
@@ -57,6 +69,11 @@ interface GameState {
   
   // Pointer lock state
   isPointerLocked: boolean
+  
+  // Mobile state
+  isMobileDevice: boolean
+  mobileJoystick: JoystickInput
+  mobileGameStarted: boolean // Tracks if mobile user has started (replaces pointer lock check)
   
   // Interaction state (set by InteractRaycaster)
   hoveredTarget: Target | null
@@ -100,6 +117,10 @@ interface GameState {
   
   // Pointer lock
   setPointerLocked: (locked: boolean) => void
+  
+  // Mobile controls
+  setMobileJoystick: (input: JoystickInput) => void
+  setMobileGameStarted: (started: boolean) => void
   
   // Get RNG for current run
   getRNG: () => RNG
@@ -197,6 +218,11 @@ export const useGameStore = create<GameState>()(
     chestTools: [],
     isPointerLocked: false,
     
+    // Mobile state
+    isMobileDevice: isMobile(),
+    mobileJoystick: { x: 0, y: 0 },
+    mobileGameStarted: false,
+    
     // Interaction state (set by InteractRaycaster)
     hoveredTarget: null,
     holdProgress: 0,
@@ -234,6 +260,8 @@ export const useGameStore = create<GameState>()(
         revealEndTime: 0,
         chestOpen: false,
         chestTools,
+        mobileGameStarted: false, // Reset for new game
+        mobileJoystick: { x: 0, y: 0 },
       })
     },
 
@@ -282,9 +310,11 @@ export const useGameStore = create<GameState>()(
         return
       }
       
-      // Only tick timer when pointer is locked (player is actively playing)
-      // This prevents timer from running before player clicks to start
-      if (!state.isPointerLocked) {
+      // Only tick timer when player is actively playing
+      // Desktop: requires pointer lock
+      // Mobile: requires mobileGameStarted flag
+      const isActive = state.isMobileDevice ? state.mobileGameStarted : state.isPointerLocked
+      if (!isActive) {
         return
       }
       
@@ -476,6 +506,10 @@ export const useGameStore = create<GameState>()(
     // Pointer lock
     setPointerLocked: (locked) => set({ isPointerLocked: locked }),
 
+    // Mobile controls
+    setMobileJoystick: (input) => set({ mobileJoystick: input }),
+    setMobileGameStarted: (started) => set({ mobileGameStarted: started }),
+
     // Get RNG for current run (for deterministic operations)
     getRNG: () => {
       const { seed } = get()
@@ -497,4 +531,9 @@ export const useToasts = () => useGameStore((s) => s.toasts)
 export const useHintedTargetId = () => useGameStore((s) => s.hintedTargetId)
 export const useRevealQuadrant = () => useGameStore((s) => s.revealQuadrant)
 export const useChestState = () => useGameStore((s) => ({ open: s.chestOpen, tools: s.chestTools }))
+
+// Mobile-specific selectors
+export const useIsMobile = () => useGameStore((s) => s.isMobileDevice)
+export const useMobileJoystick = () => useGameStore((s) => s.mobileJoystick)
+export const useMobileGameStarted = () => useGameStore((s) => s.mobileGameStarted)
 

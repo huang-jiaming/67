@@ -13,10 +13,11 @@ import {
   useToasts,
   useRevealQuadrant,
   useCurrentLevel,
+  useIsMobile,
 } from '../state'
 import { HoldProgressUI } from './HoldProgressUI'
 import { ChestUI } from './Chest'
-import { playToolUse, playTimerWarning, playTimeFreeze, playTimeAdd } from './Sfx'
+import { playToolUse, playTimerWarning, playTimeFreeze, playTimeAdd, playButtonClick } from './Sfx'
 
 /**
  * Main HUD component
@@ -36,6 +37,9 @@ export function HUD() {
   const hoveredTarget = useGameStore((s) => s.hoveredTarget)
   const holdProgress = useGameStore((s) => s.holdProgress)
   const useTool = useGameStore((s) => s.useTool)
+  const isMobile = useIsMobile()
+  const pauseGame = useGameStore((s) => s.pauseGame)
+  const openChest = useGameStore((s) => s.openChest)
   
   // Play warning sound when time is low
   const lastWarningRef = useRef(0)
@@ -166,11 +170,40 @@ export function HUD() {
         </div>
       )}
       
-      {/* Chest interaction prompt */}
+      {/* Chest interaction prompt - different for mobile vs desktop */}
       {nearChest && !chestOpen && (
-        <div className="interact-prompt">
-          Press <kbd>E</kbd> to open chest
-        </div>
+        isMobile ? (
+          <button
+            className="mobile-action-btn chest-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              playButtonClick()
+              openChest()
+            }}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            📦 Open Chest
+          </button>
+        ) : (
+          <div className="interact-prompt">
+            Press <kbd>E</kbd> to open chest
+          </div>
+        )
+      )}
+      
+      {/* Mobile pause button */}
+      {isMobile && !chestOpen && (
+        <button
+          className="mobile-pause-btn"
+          onClick={(e) => {
+            e.stopPropagation()
+            playButtonClick()
+            pauseGame()
+          }}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          ⏸️
+        </button>
       )}
       
       {/* Chest backdrop and UI */}

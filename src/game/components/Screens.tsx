@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useGameStore, useDifficulty, useTimeRemaining, useFoundCount, useCurrentLevel } from '../state'
+import { useGameStore, useDifficulty, useTimeRemaining, useFoundCount, useCurrentLevel, useIsMobile } from '../state'
 import { Difficulty } from '../types'
 import { playButtonClick, playVictory, playGameOver } from './Sfx'
 
@@ -81,9 +81,11 @@ export function StartScreen() {
 }
 
 /**
- * Instructions Modal
+ * Instructions Modal - Shows different instructions for mobile vs desktop
  */
 function InstructionsModal({ onClose }: { onClose: () => void }) {
+  const isMobile = useIsMobile()
+  
   return (
     <>
       <div
@@ -103,11 +105,24 @@ function InstructionsModal({ onClose }: { onClose: () => void }) {
         <h2>🎯 How to Play</h2>
         <ul>
           <li><strong>Goal:</strong> Find 5 hidden "67" references before time runs out!</li>
-          <li><strong>Move:</strong> WASD keys to walk, Mouse to look around</li>
-          <li><strong>Target:</strong> Aim at a "67" and <strong>hold mouse button</strong> for 5 seconds to confirm</li>
-          <li><strong>Chest:</strong> Press E near the chest to get powerups</li>
-          <li><strong>Tools:</strong> Press 1-4 to use tools in your inventory</li>
-          <li><strong>Pause:</strong> Press ESC to pause the game</li>
+          {isMobile ? (
+            <>
+              <li><strong>Move:</strong> Use the joystick (bottom-left) to walk</li>
+              <li><strong>Look:</strong> Drag anywhere on screen to look around</li>
+              <li><strong>Target:</strong> Look at a "67" and <strong>hold touch</strong> to confirm</li>
+              <li><strong>Chest:</strong> Tap the button when near the chest</li>
+              <li><strong>Tools:</strong> Tap tools at bottom to use them</li>
+              <li><strong>Pause:</strong> Tap ⏸️ button (top-right)</li>
+            </>
+          ) : (
+            <>
+              <li><strong>Move:</strong> WASD keys to walk, Mouse to look around</li>
+              <li><strong>Target:</strong> Aim at a "67" and <strong>hold mouse button</strong> for 5 seconds to confirm</li>
+              <li><strong>Chest:</strong> Press E near the chest to get powerups</li>
+              <li><strong>Tools:</strong> Press 1-4 to use tools in your inventory</li>
+              <li><strong>Pause:</strong> Press ESC to pause the game</li>
+            </>
+          )}
         </ul>
         <h3 style={{ marginTop: '1rem', color: '#4ECDC4' }}>🔧 Tools</h3>
         <ul>
