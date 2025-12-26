@@ -114,23 +114,37 @@ export function GameRoot() {
         // Desktop: show when not pointer locked
         // Mobile: show when game hasn't started
         (isMobile ? !mobileGameStarted : !isPointerLocked) && (
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: 'rgba(0,0,0,0.85)',
-            color: 'white',
-            padding: '2rem 3rem',
-            borderRadius: 16,
-            fontFamily: 'var(--font-display)',
-            fontSize: isMobile ? '1.2rem' : '1.5rem',
-            textAlign: 'center',
-            zIndex: 100,
-            border: '4px solid #4ECDC4',
-            cursor: 'pointer',
-            maxWidth: isMobile ? '85%' : 'auto',
-          }}>
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'rgba(0,0,0,0.85)',
+              color: 'white',
+              padding: '2rem 3rem',
+              borderRadius: 16,
+              fontFamily: 'var(--font-display)',
+              fontSize: isMobile ? '1.2rem' : '1.5rem',
+              textAlign: 'center',
+              zIndex: 100,
+              border: '4px solid #4ECDC4',
+              cursor: 'pointer',
+              maxWidth: isMobile ? '85%' : 'auto',
+            }}
+            onClick={() => {
+              // On mobile, tapping the overlay starts the game
+              if (isMobile) {
+                useGameStore.getState().setMobileGameStarted(true)
+              }
+              // On desktop, clicking will trigger pointer lock via canvas
+            }}
+            onTouchStart={(e) => {
+              // Prevent default to avoid double-tap zoom
+              e.preventDefault()
+              useGameStore.getState().setMobileGameStarted(true)
+            }}
+          >
             <div style={{ marginBottom: '0.5rem' }}>
               🎯 {isMobile ? 'Tap to Start Playing' : 'Click to Start Playing'}
             </div>
