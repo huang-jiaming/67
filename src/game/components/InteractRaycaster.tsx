@@ -1,14 +1,14 @@
 /**
  * InteractRaycaster.tsx - Interaction System
  * Handles raycasting from camera center to detect interactable objects
- * Manages the "hold to target" mechanic for finding 67s
+ * Manages the "hold to target" mechanic for finding 67s AND detecting decoys
  */
 
 import { useRef, useCallback, useEffect, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useGameStore, useGamePhase, useTargets, useIsMobile } from '../state'
-import { Target } from '../types'
+import { useGameStore, useGamePhase, useTargets, useDecoys, useIsMobile } from '../state'
+import { Target, Decoy } from '../types'
 import { Vector3Tuple } from 'three'
 import { playTargetFound, playHoverStart, playHoldProgress } from './Sfx'
 
@@ -41,6 +41,9 @@ function isInVantageZone(playerPos: THREE.Vector3, target: Target): boolean {
   return distance <= target.vantageZone.radius * 2
 }
 
+// Type for what we're hovering over
+type HoverItem = { type: 'target'; item: Target } | { type: 'decoy'; item: Decoy } | null
+
 /**
  * Central raycaster for interaction detection
  */
@@ -50,7 +53,9 @@ export function InteractRaycaster({
   const { camera } = useThree()
   const phase = useGamePhase()
   const targets = useTargets()
+  const decoys = useDecoys()
   const findTarget = useGameStore((s) => s.findTarget)
+  const selectDecoy = useGameStore((s) => s.selectDecoy)
   const openChest = useGameStore((s) => s.openChest)
   const chestOpen = useGameStore((s) => s.chestOpen)
   const isPointerLocked = useGameStore((s) => s.isPointerLocked)
@@ -60,8 +65,8 @@ export function InteractRaycaster({
   // Raycaster
   const raycaster = useRef(new THREE.Raycaster())
   
-  // Interaction state (exposed to HUD via global store)
-  const [hoveredTarget, setHoveredTarget] = useState<Target | null>(null)
+  // Interaction state
+  const [hoveredItem, setHoveredItem] = useState<HoverItem>(null)
   const [holdProgress, setHoldProgress] = useState(0)
   const [isHolding, setIsHolding] = useState(false)
   const [nearChest, setNearChest] = useState(false)
@@ -72,14 +77,21 @@ export function InteractRaycaster({
   // Update global state for HUD
   useEffect(() => {
     useGameStore.setState({
-      hoveredTarget,
+      hoveredTarget: hoveredItem?.type === 'target' ? hoveredItem.item : null,
+      hoveredDecoy: hoveredItem?.type === 'decoy' ? hoveredItem.item : null,
       holdProgress,
       nearChest,
     })
-  }, [hoveredTarget, holdProgress, nearChest])
+  }, [hoveredItem, holdProgress, nearChest])
   
   // Check if player is actively playing (pointer locked on desktop, game started on mobile)
   const isPlayerActive = isMobile ? mobileGameStarted : isPointerLocked
+  
+  // Get hold seconds required for current hovered item
+  const getHoldSeconds = (): number => {
+    if (!hoveredItem) return 5
+    return hoveredItem.item.holdSecondsRequired
+  }
   
   // Mouse/touch handlers
   const handleMouseDown = useCallback((e: MouseEvent | TouchEvent) => {
@@ -94,12 +106,16 @@ export function InteractRaycaster({
       }
     }
     
-    if (hoveredTarget && !hoveredTarget.found) {
+    if (hoveredItem) {
+      // Check if target is already found or decoy already revealed
+      if (hoveredItem.type === 'target' && hoveredItem.item.found) return
+      if (hoveredItem.type === 'decoy' && hoveredItem.item.revealed) return
+      
       setIsHolding(true)
       holdStartTime.current = Date.now()
       lastProgressSound.current = 0
     }
-  }, [phase, isPlayerActive, chestOpen, hoveredTarget, isMobile])
+  }, [phase, isPlayerActive, chestOpen, hoveredItem, isMobile])
   
   const handleMouseUp = useCallback(() => {
     setIsHolding(false)
@@ -143,14 +159,14 @@ export function InteractRaycaster({
   // Raycast and hold progress update
   useFrame(() => {
     if (phase !== 'playing') {
-      setHoveredTarget(null)
+      setHoveredItem(null)
       setNearChest(false)
       return
     }
     
-    // When chest is open, don't detect targets
+    // When chest is open, don't detect targets or decoys
     if (chestOpen) {
-      setHoveredTarget(null)
+      setHoveredItem(null)
       return
     }
     
@@ -162,10 +178,11 @@ export function InteractRaycaster({
     const distToChest = camera.position.distanceTo(_chestPos)
     setNearChest(distToChest <= CHEST_INTERACT_DISTANCE)
     
-    // Find best target to hover (closest that meets criteria)
-    let foundHover: Target | null = null
+    // Find best item to hover (closest that meets criteria)
+    let foundHover: HoverItem = null
     let bestDot = TARGET_DOT_THRESHOLD
     
+    // Check targets first
     for (const target of targets) {
       if (target.found) continue
       
@@ -186,27 +203,54 @@ export function InteractRaycaster({
       // Find the target we're looking at most directly
       if (dot > bestDot) {
         bestDot = dot
-        foundHover = target
+        foundHover = { type: 'target', item: target }
+      }
+    }
+    
+    // Check decoys (same logic as targets)
+    for (const decoy of decoys) {
+      if (decoy.revealed) continue
+      
+      _targetPos.set(decoy.position[0], decoy.position[1], decoy.position[2])
+      const distToDecoy = camera.position.distanceTo(_targetPos)
+      
+      // Check if within interact radius
+      if (distToDecoy > decoy.interactRadius + 1) continue
+      
+      // Check if looking at decoy
+      _dirToTarget.copy(_targetPos).sub(camera.position).normalize()
+      _cameraDir.set(0, 0, -1).applyQuaternion(camera.quaternion)
+      const dot = _dirToTarget.dot(_cameraDir)
+      
+      // Find the decoy we're looking at most directly
+      if (dot > bestDot) {
+        bestDot = dot
+        foundHover = { type: 'decoy', item: decoy }
       }
     }
     
     // Update hovered state
-    if (foundHover !== hoveredTarget) {
-      if (foundHover && !hoveredTarget) {
+    const prevItem = hoveredItem
+    const currentItemId = foundHover?.item.id
+    const prevItemId = prevItem?.item.id
+    
+    if (currentItemId !== prevItemId) {
+      if (foundHover && !prevItem) {
         playHoverStart()
       }
-      setHoveredTarget(foundHover)
+      setHoveredItem(foundHover)
       
-      // Reset hold if target changed
+      // Reset hold if item changed
       setIsHolding(false)
       holdStartTime.current = null
       setHoldProgress(0)
     }
     
     // Update hold progress
-    if (isHolding && hoveredTarget && holdStartTime.current !== null) {
+    if (isHolding && hoveredItem && holdStartTime.current !== null) {
       const elapsed = (Date.now() - holdStartTime.current) / 1000
-      const progress = Math.min(1, elapsed / hoveredTarget.holdSecondsRequired)
+      const requiredTime = getHoldSeconds()
+      const progress = Math.min(1, elapsed / requiredTime)
       setHoldProgress(progress)
       
       // Play progress sounds
@@ -216,14 +260,21 @@ export function InteractRaycaster({
         playHoldProgress(progress)
       }
       
-      // Check if target is found
+      // Check if selection is complete
       if (progress >= 1) {
-        findTarget(hoveredTarget.id)
-        playTargetFound()
+        if (hoveredItem.type === 'target') {
+          findTarget(hoveredItem.item.id)
+          playTargetFound()
+        } else if (hoveredItem.type === 'decoy') {
+          selectDecoy(hoveredItem.item.id)
+          // Play a different sound for wrong selection (could add a "wrong" sound)
+          // For now, just no victory sound
+        }
+        
         setIsHolding(false)
         holdStartTime.current = null
         setHoldProgress(0)
-        setHoveredTarget(null)
+        setHoveredItem(null)
       }
     }
   })
@@ -235,6 +286,7 @@ export function InteractRaycaster({
 declare module '../state' {
   interface GameState {
     hoveredTarget: Target | null
+    hoveredDecoy: Decoy | null
     holdProgress: number
     nearChest: boolean
   }

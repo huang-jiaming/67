@@ -1,10 +1,10 @@
 /**
  * levelConfigs.ts - Level/Room Configuration Data
  * Defines 3+ unique rooms with different layouts and target placements
- * Each room has candidate targets from which 5 are randomly selected per run
+ * Each room has candidate targets (correct 67s) and candidate decoys (wrong items)
  */
 
-import { LevelConfig } from '../types'
+import { LevelConfig, Decoy } from '../types'
 
 /**
  * Level 1: Kid's Bedroom
@@ -127,6 +127,75 @@ const LEVEL_BEDROOM: LevelConfig = {
       interactRadius: 4,
       holdSecondsRequired: 5,
       hint: 'What are they saying on TV?',
+    },
+  ],
+  
+  candidateDecoys: [
+    // Wrong clock showing 7:06
+    {
+      id: 'decoy_clock_1',
+      type: 'wrong_clock',
+      position: [-2, 1.1, -5.5],
+      rotation: [0, 0, 0],
+      revealed: false,
+      displayValue: '7:06',
+      interactRadius: 2.5,
+      holdSecondsRequired: 5,
+    },
+    // Wrong clock showing 6:17
+    {
+      id: 'decoy_clock_2',
+      type: 'wrong_clock',
+      position: [5.3, 2.5, -2],
+      rotation: [0, -Math.PI/2, 0],
+      revealed: false,
+      displayValue: '6:17',
+      interactRadius: 2.5,
+      holdSecondsRequired: 5,
+    },
+    // Wrong page showing 76
+    {
+      id: 'decoy_page_1',
+      type: 'wrong_page',
+      position: [-5.3, 0.8, -1],
+      rotation: [0, Math.PI/2, 0],
+      revealed: false,
+      displayValue: '76',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+    // Wrong note showing 76
+    {
+      id: 'decoy_note_1',
+      type: 'wrong_note',
+      position: [-2, 1.5, -5.8],
+      rotation: [0, 0, 0],
+      revealed: false,
+      displayValue: '76',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+    // Wrong price showing $7.60
+    {
+      id: 'decoy_price_1',
+      type: 'wrong_price',
+      position: [2, 0.5, 2],
+      rotation: [0, Math.PI * 0.2, 0],
+      revealed: false,
+      displayValue: '$7.60',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+    // Wrong calendar showing 7/6
+    {
+      id: 'decoy_calendar_1',
+      type: 'wrong_calendar',
+      position: [-4, 2.5, -5.8],
+      rotation: [0, 0, 0],
+      revealed: false,
+      displayValue: '7/6',
+      interactRadius: 3,
+      holdSecondsRequired: 5,
     },
   ],
 }
@@ -262,6 +331,86 @@ const LEVEL_LIVING_ROOM: LevelConfig = {
       interactRadius: 5,
       holdSecondsRequired: 5,
       hint: 'Read the subtitles on TV...',
+    },
+  ],
+  
+  candidateDecoys: [
+    // Wrong clock showing 7:06
+    {
+      id: 'decoy_clock_lr1',
+      type: 'wrong_clock',
+      position: [6.3, 2.2, -1.5],
+      rotation: [0, -Math.PI/2, 0],
+      revealed: false,
+      displayValue: '7:06',
+      interactRadius: 2.5,
+      holdSecondsRequired: 5,
+    },
+    // Wrong page showing 97
+    {
+      id: 'decoy_page_lr1',
+      type: 'wrong_page',
+      position: [-0.3, 0.55, -0.5],
+      rotation: [0, Math.PI * 0.5, 0],
+      revealed: false,
+      displayValue: '97',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+    // Wrong note showing 16
+    {
+      id: 'decoy_note_lr1',
+      type: 'wrong_note',
+      position: [3, 2.8, -4.8],
+      rotation: [0, 0, 0],
+      revealed: false,
+      displayValue: '16',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+    // Wrong price showing $6.17
+    {
+      id: 'decoy_price_lr1',
+      type: 'wrong_price',
+      position: [-6.3, 0.9, 0],
+      rotation: [0, Math.PI/2, 0],
+      revealed: false,
+      displayValue: '$6.17',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+    // Wrong calendar showing 6/17
+    {
+      id: 'decoy_calendar_lr1',
+      type: 'wrong_calendar',
+      position: [4, 2.5, -4.8],
+      rotation: [0, 0, 0],
+      revealed: false,
+      displayValue: '6/17',
+      interactRadius: 3,
+      holdSecondsRequired: 5,
+    },
+    // Wrong clock showing 6:70
+    {
+      id: 'decoy_clock_lr2',
+      type: 'wrong_clock',
+      position: [-6.3, 0.6, -3],
+      rotation: [0, Math.PI/2, 0],
+      revealed: false,
+      displayValue: '6:70',
+      interactRadius: 2.5,
+      holdSecondsRequired: 5,
+    },
+    // Wrong note showing 167
+    {
+      id: 'decoy_note_lr2',
+      type: 'wrong_note',
+      position: [6.8, 2.2, 1.5],
+      rotation: [0, -Math.PI/2, 0],
+      revealed: false,
+      displayValue: '167',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
     },
   ],
 }
@@ -412,6 +561,97 @@ const LEVEL_CLASSROOM: LevelConfig = {
       hint: 'The supply closet has a keypad...',
     },
   ],
+  
+  candidateDecoys: [
+    // Wrong clock showing 7:06
+    {
+      id: 'decoy_clock_c1',
+      type: 'wrong_clock',
+      position: [-4, 3, -5.8],
+      rotation: [0, 0, 0],
+      revealed: false,
+      displayValue: '7:06',
+      interactRadius: 3,
+      holdSecondsRequired: 5,
+    },
+    // Wrong page showing 76
+    {
+      id: 'decoy_page_c1',
+      type: 'wrong_page',
+      position: [0, 0.85, 0],
+      rotation: [0, Math.PI * 0.2, 0],
+      revealed: false,
+      displayValue: '76',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+    // Wrong page showing 167
+    {
+      id: 'decoy_page_c2',
+      type: 'wrong_page',
+      position: [4, 0.85, 0],
+      rotation: [0, -Math.PI * 0.1, 0],
+      revealed: false,
+      displayValue: '167',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+    // Wrong note showing 76
+    {
+      id: 'decoy_note_c1',
+      type: 'wrong_note',
+      position: [-7, 2.5, -2],
+      rotation: [0, Math.PI/2, 0],
+      revealed: false,
+      displayValue: '76',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+    // Wrong price showing $7.60
+    {
+      id: 'decoy_price_c1',
+      type: 'wrong_price',
+      position: [-7, 0.5, 3],
+      rotation: [0, Math.PI/2, 0],
+      revealed: false,
+      displayValue: '$7.60',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+    // Wrong calendar showing 7/6
+    {
+      id: 'decoy_calendar_c1',
+      type: 'wrong_calendar',
+      position: [2, 2.8, -5.8],
+      rotation: [0, 0, 0],
+      revealed: false,
+      displayValue: '7/6',
+      interactRadius: 3,
+      holdSecondsRequired: 5,
+    },
+    // Wrong clock showing 16:07
+    {
+      id: 'decoy_clock_c2',
+      type: 'wrong_clock',
+      position: [7.8, 2.8, -2],
+      rotation: [0, -Math.PI/2, 0],
+      revealed: false,
+      displayValue: '16:07',
+      interactRadius: 2.5,
+      holdSecondsRequired: 5,
+    },
+    // Wrong note showing 6x7
+    {
+      id: 'decoy_note_c2',
+      type: 'wrong_note',
+      position: [-0.8, 0.85, -4.5],
+      rotation: [-Math.PI/12, -0.2, 0],
+      revealed: false,
+      displayValue: '6×7',
+      interactRadius: 2,
+      holdSecondsRequired: 5,
+    },
+  ],
 }
 
 /** All available levels */
@@ -430,4 +670,3 @@ export function getLevelById(id: string): LevelConfig | undefined {
 export function getLevelByIndex(index: number): LevelConfig {
   return LEVELS[index % LEVELS.length]
 }
-

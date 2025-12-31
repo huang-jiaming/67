@@ -1,12 +1,80 @@
 /**
- * Screens.tsx - Game Screens (Start, Pause, Win, Lose)
+ * Screens.tsx - Game Screens (Start, Pause, Win)
  * Full-screen overlays for different game states
+ * No more Lose screen since the game has no timer!
  */
 
 import { useState, useEffect } from 'react'
-import { useGameStore, useDifficulty, useTimeRemaining, useFoundCount, useCurrentLevel, useIsMobile } from '../state'
-import { Difficulty } from '../types'
-import { playButtonClick, playVictory, playGameOver } from './Sfx'
+import { useGameStore, useDifficulty, useTimeElapsed, useWrongSelections, useFoundCount, useCurrentLevel, useIsMobile, usePlayerName, useFinalScore } from '../state'
+import { Difficulty, PENALTY_SECONDS } from '../types'
+import { playButtonClick, playVictory } from './Sfx'
+
+/**
+ * Name Entry Screen - First screen shown
+ */
+export function NameEntryScreen() {
+  const [name, setName] = useState('')
+  const setPlayerName = useGameStore((s) => s.setPlayerName)
+  const setPhase = useGameStore((s) => s.setPhase)
+  
+  const handleSubmit = (playerName: string) => {
+    playButtonClick()
+    setPlayerName(playerName)
+    setPhase('menu')
+  }
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && name.trim()) {
+      handleSubmit(name.trim())
+    }
+  }
+  
+  return (
+    <div className="start-screen">
+      <h1>67</h1>
+      <div className="subtitle">Escape Room</div>
+      
+      <div style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
+        <div style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '0.75rem', fontSize: '1.1rem' }}>
+          Enter your name:
+        </div>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Your name..."
+          maxLength={20}
+          autoFocus
+          style={{
+            padding: '0.75rem 1.25rem',
+            fontSize: '1.2rem',
+            borderRadius: '8px',
+            border: '2px solid #4ECDC4',
+            background: 'rgba(0,0,0,0.5)',
+            color: 'white',
+            width: '250px',
+            textAlign: 'center',
+            fontFamily: 'inherit',
+            outline: 'none',
+          }}
+        />
+      </div>
+      
+      <button
+        className="play-btn"
+        onClick={() => handleSubmit(name.trim() || 'Guest')}
+        style={{ marginBottom: '0.75rem' }}
+      >
+        {name.trim() ? '▶ Continue' : '👤 Play as Guest'}
+      </button>
+      
+      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>
+        Your plays will be logged
+      </div>
+    </div>
+  )
+}
 
 /**
  * Start/Menu Screen
@@ -14,8 +82,10 @@ import { playButtonClick, playVictory, playGameOver } from './Sfx'
 export function StartScreen() {
   const [showInstructions, setShowInstructions] = useState(false)
   const difficulty = useDifficulty()
+  const playerName = usePlayerName()
   const setDifficulty = useGameStore((s) => s.setDifficulty)
   const startGame = useGameStore((s) => s.startGame)
+  const setPhase = useGameStore((s) => s.setPhase)
   
   const handleDifficultySelect = (diff: Difficulty) => {
     playButtonClick()
@@ -31,6 +101,22 @@ export function StartScreen() {
     <div className="start-screen">
       <h1>67</h1>
       <div className="subtitle">Escape Room</div>
+      
+      <div 
+        style={{ 
+          color: '#4ECDC4', 
+          marginTop: '0.5rem', 
+          fontSize: '1.1rem',
+          cursor: 'pointer',
+        }}
+        onClick={() => {
+          playButtonClick()
+          setPhase('name_entry')
+        }}
+        title="Click to change name"
+      >
+        Welcome, {playerName || 'Guest'}! ✏️
+      </div>
       
       <div className="difficulty-select">
         <button
@@ -54,9 +140,9 @@ export function StartScreen() {
       </div>
       
       <div style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '1rem', fontSize: '0.9rem' }}>
-        {difficulty === 'easy' && '90 seconds • 3s hold time • More obvious targets'}
-        {difficulty === 'normal' && '60 seconds • 5s hold time • Standard challenge'}
-        {difficulty === 'hard' && '45 seconds • 5s hold time • Hidden targets'}
+        {difficulty === 'easy' && '3s hold time • 2 decoys • Easier to spot'}
+        {difficulty === 'normal' && '4s hold time • 4 decoys • Balanced challenge'}
+        {difficulty === 'hard' && '5s hold time • 6 decoys • Many traps!'}
       </div>
       
       <button className="play-btn" onClick={handlePlay}>
@@ -104,7 +190,9 @@ function InstructionsModal({ onClose }: { onClose: () => void }) {
         <button className="close-btn" onClick={onClose}>×</button>
         <h2>🎯 How to Play</h2>
         <ul>
-          <li><strong>Goal:</strong> Find 5 hidden "67" references before time runs out!</li>
+          <li><strong>Goal:</strong> Find 5 hidden "67" references as fast as possible!</li>
+          <li><strong>Scoring:</strong> Your score = Time + Penalties (lower is better!)</li>
+          <li><strong>⚠️ Decoys:</strong> Watch out for fake items (76, 7:06, etc.) - selecting them adds +{PENALTY_SECONDS}s penalty!</li>
           {isMobile ? (
             <>
               <li><strong>Move:</strong> Use the joystick (bottom-left) to walk</li>
@@ -117,7 +205,7 @@ function InstructionsModal({ onClose }: { onClose: () => void }) {
           ) : (
             <>
               <li><strong>Move:</strong> WASD keys to walk, Mouse to look around</li>
-              <li><strong>Target:</strong> Aim at a "67" and <strong>hold mouse button</strong> for 5 seconds to confirm</li>
+              <li><strong>Target:</strong> Aim at a "67" and <strong>hold mouse button</strong> to confirm</li>
               <li><strong>Chest:</strong> Press E near the chest to get powerups</li>
               <li><strong>Tools:</strong> Press 1-4 to use tools in your inventory</li>
               <li><strong>Pause:</strong> Press ESC to pause the game</li>
@@ -126,9 +214,7 @@ function InstructionsModal({ onClose }: { onClose: () => void }) {
         </ul>
         <h3 style={{ marginTop: '1rem', color: '#4ECDC4' }}>🔧 Tools</h3>
         <ul>
-          <li>💡 <strong>Hint:</strong> Shows the nearest unfound target</li>
-          <li>❄️ <strong>Time Freeze:</strong> Pauses timer for 5 seconds</li>
-          <li>⏰ <strong>Time Add:</strong> Adds 10 seconds</li>
+          <li>💡 <strong>Hint:</strong> Shows the nearest unfound target (not decoys!)</li>
           <li>🔍 <strong>Reveal:</strong> Shows direction of remaining targets</li>
         </ul>
       </div>
@@ -179,10 +265,12 @@ export function PauseMenu() {
 }
 
 /**
- * Win Screen
+ * Win Screen - Shows score breakdown
  */
 export function WinScreen() {
-  const timeRemaining = useTimeRemaining()
+  const timeElapsed = useTimeElapsed()
+  const wrongSelections = useWrongSelections()
+  const finalScore = useFinalScore()
   const foundCount = useFoundCount()
   const currentLevel = useCurrentLevel()
   const nextLevel = useGameStore((s) => s.nextLevel)
@@ -193,14 +281,66 @@ export function WinScreen() {
     playVictory()
   }, [])
   
+  // Format time nicely
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    const ms = Math.floor((seconds % 1) * 10)
+    if (mins > 0) {
+      return `${mins}:${secs.toString().padStart(2, '0')}.${ms}`
+    }
+    return `${secs}.${ms}s`
+  }
+  
+  // Get score rating
+  const getScoreRating = (score: number): { emoji: string; text: string; color: string } => {
+    if (score < 30) return { emoji: '🏆', text: 'LEGENDARY!', color: '#FFD700' }
+    if (score < 45) return { emoji: '🌟', text: 'AMAZING!', color: '#FF6B35' }
+    if (score < 60) return { emoji: '⭐', text: 'Great!', color: '#4ECDC4' }
+    if (score < 90) return { emoji: '👍', text: 'Good job!', color: '#7bed9f' }
+    return { emoji: '✓', text: 'Completed', color: '#a8a8a8' }
+  }
+  
+  const rating = getScoreRating(finalScore)
+  const penaltyTime = wrongSelections * PENALTY_SECONDS
+  
   return (
     <div className="end-screen win">
       <h1>🎉 VICTORY! 🎉</h1>
-      <div className="stats">
-        <div>Room: {currentLevel.name}</div>
-        <div>Time Remaining: {Math.floor(timeRemaining)}s</div>
-        <div>Targets Found: {foundCount}/5</div>
+      
+      {/* Score rating */}
+      <div style={{ fontSize: '2rem', color: rating.color, marginBottom: '0.5rem' }}>
+        {rating.emoji} {rating.text}
       </div>
+      
+      <div className="stats" style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: '0.9rem', opacity: 0.7, marginBottom: '0.5rem' }}>Room: {currentLevel.name}</div>
+        
+        {/* Score breakdown */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem 1rem', textAlign: 'left' }}>
+          <div>⏱️ Time:</div>
+          <div style={{ textAlign: 'right' }}>{formatTime(timeElapsed)}</div>
+          
+          {wrongSelections > 0 && (
+            <>
+              <div style={{ color: '#ff4757' }}>❌ Wrong selections:</div>
+              <div style={{ textAlign: 'right', color: '#ff4757' }}>+{penaltyTime}s ({wrongSelections}×{PENALTY_SECONDS})</div>
+            </>
+          )}
+          
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '0.5rem', fontWeight: 'bold' }}>
+            📊 Final Score:
+          </div>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '0.5rem', textAlign: 'right', fontWeight: 'bold', fontSize: '1.2rem', color: rating.color }}>
+            {formatTime(finalScore)}
+          </div>
+        </div>
+        
+        <div style={{ marginTop: '1rem', fontSize: '0.85rem', opacity: 0.6 }}>
+          Targets Found: {foundCount}/5
+        </div>
+      </div>
+      
       <button
         className="next-btn"
         onClick={() => {
@@ -222,103 +362,3 @@ export function WinScreen() {
     </div>
   )
 }
-
-/**
- * Lose Screen
- */
-/**
- * Ending Transition Overlay
- * Shows when time runs out before the lose screen
- */
-export function EndingTransition() {
-  const [shake, setShake] = useState(true)
-  
-  // Play explosion sound and trigger shake
-  useEffect(() => {
-    playGameOver()
-    
-    // Stop shake after animation
-    const timer = setTimeout(() => setShake(false), 500)
-    return () => clearTimeout(timer)
-  }, [])
-  
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        background: 'radial-gradient(circle, rgba(255,71,87,0.3) 0%, rgba(0,0,0,0.8) 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
-        animation: shake ? 'shake 0.5s ease' : undefined,
-      }}
-    >
-      <style>
-        {`
-          @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
-            20%, 40%, 60%, 80% { transform: translateX(10px); }
-          }
-          @keyframes explode {
-            0% { transform: scale(0.5); opacity: 0; }
-            50% { transform: scale(1.5); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-          }
-        `}
-      </style>
-      <div
-        style={{
-          fontSize: '8rem',
-          animation: 'explode 0.5s ease-out',
-        }}
-      >
-        💥
-      </div>
-    </div>
-  )
-}
-
-export function LoseScreen() {
-  const foundCount = useFoundCount()
-  const currentLevel = useCurrentLevel()
-  const restartLevel = useGameStore((s) => s.restartLevel)
-  const goToMenu = useGameStore((s) => s.goToMenu)
-  
-  return (
-    <div className="end-screen lose">
-      <h1>💥 TIME'S UP! 💥</h1>
-      <div className="stats">
-        <div>Room: {currentLevel.name}</div>
-        <div>Targets Found: {foundCount}/5</div>
-        <div style={{ color: '#ff4757', marginTop: '1rem' }}>
-          So close! Try again?
-        </div>
-      </div>
-      <button
-        className="retry-btn"
-        onClick={() => {
-          playButtonClick()
-          restartLevel()
-        }}
-      >
-        🔄 Retry
-      </button>
-      <button
-        className="menu-btn"
-        onClick={() => {
-          playButtonClick()
-          goToMenu()
-        }}
-      >
-        Main Menu
-      </button>
-    </div>
-  )
-}
-

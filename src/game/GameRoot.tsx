@@ -7,7 +7,7 @@
 import { useEffect, useCallback, Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { useGameStore, useGamePhase, useCurrentLevel, useIsMobile } from './state'
-import { StartScreen, PauseMenu, WinScreen, LoseScreen, EndingTransition } from './components/Screens'
+import { NameEntryScreen, StartScreen, PauseMenu, WinScreen } from './components/Screens'
 import { HUD } from './components/HUD'
 import { GameScene } from './components/GameScene'
 import { MobileControls } from './components/MobileControls'
@@ -52,11 +52,14 @@ export function GameRoot() {
   // Render appropriate screen based on phase
   return (
     <div style={{ width: '100%', height: '100%' }}>
+      {/* Name Entry Screen */}
+      {phase === 'name_entry' && <NameEntryScreen />}
+      
       {/* Start Screen */}
       {phase === 'menu' && <StartScreen />}
       
-      {/* Game Canvas - always rendered when not in menu */}
-      {phase !== 'menu' && (
+      {/* Game Canvas - always rendered when not in menu or name entry */}
+      {phase !== 'menu' && phase !== 'name_entry' && (
         <>
           <Canvas
             className="game-canvas"
@@ -98,14 +101,8 @@ export function GameRoot() {
           {/* Pause Menu */}
           {phase === 'paused' && <PauseMenu />}
           
-          {/* Ending Transition */}
-          {phase === 'ending' && <EndingTransition />}
-          
           {/* Win Screen */}
           {phase === 'won' && <WinScreen />}
-          
-          {/* Lose Screen */}
-          {phase === 'lost' && <LoseScreen />}
         </>
       )}
       
@@ -159,4 +156,3 @@ export function GameRoot() {
     </div>
   )
 }
-

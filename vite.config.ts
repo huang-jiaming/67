@@ -5,7 +5,14 @@ export default defineConfig({
   plugins: [react()],
   base: '/67/',  // GitHub Pages subpath for repo name
   server: {
-    port: 3000
-  }
+    port: 5173,
+    strictPort: false,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
+  },
 })
 

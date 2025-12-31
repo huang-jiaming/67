@@ -1,7 +1,7 @@
 /**
  * state.ts - Zustand Store for Game State
  * Central state management for the 67 Escape Room game
- * Designed to be serializable for future multiplayer sync
+ * Score-based gameplay: lower time + fewer mistakes = better score
  */
 
 import { create } from 'zustand'
@@ -10,12 +10,14 @@ import {
   Difficulty,
   GamePhase,
   Target,
+  Decoy,
   Tool,
   ToolType,
   DIFFICULTY_SETTINGS,
   TOOL_DEFINITIONS,
   Toast,
   Quadrant,
+  PENALTY_SECONDS,
 } from './types'
 import { createRNG, createGameSeed, RNG } from './rng'
 import { LEVELS } from './levels/levelConfigs'
@@ -38,20 +40,27 @@ interface GameState {
   phase: GamePhase
   difficulty: Difficulty
   
+  // Player info
+  playerName: string
+  sessionId: string
+  
   // Level state
   currentLevelIndex: number
   runId: string
   seed: number
   
-  // Timer
-  timeRemaining: number
-  timerFrozen: boolean
-  freezeEndTime: number
+  // Score-based timing (count UP, not down)
+  startTime: number           // Timestamp when game started
+  timeElapsed: number         // Seconds since start (updated each frame)
+  wrongSelections: number     // Count of decoy selections
   
   // Targets
   targets: Target[]
   foundCount: number
   requiredCount: number
+  
+  // Decoys
+  decoys: Decoy[]
   
   // Player inventory
   inventory: Tool[]
@@ -77,12 +86,15 @@ interface GameState {
   
   // Interaction state (set by InteractRaycaster)
   hoveredTarget: Target | null
+  hoveredDecoy: Decoy | null
   holdProgress: number
   nearChest: boolean
   
   // Actions
   setPhase: (phase: GamePhase) => void
   setDifficulty: (difficulty: Difficulty) => void
+  setPlayerName: (name: string) => void
+  confirmNameEntry: () => void
   startGame: () => void
   pauseGame: () => void
   resumeGame: () => void
@@ -90,14 +102,19 @@ interface GameState {
   nextLevel: () => void
   goToMenu: () => void
   
+  // Logging actions
+  logGameStart: () => void
+  logGameEnd: (result: 'won') => void
+  
   // Timer actions
   tick: (delta: number) => void
-  addTime: (seconds: number) => void
-  freezeTime: (duration: number) => void
   
   // Target actions
   findTarget: (targetId: string) => void
   setHintedTarget: (targetId: string | null, duration?: number) => void
+  
+  // Decoy actions
+  selectDecoy: (decoyId: string) => void
   
   // Tool actions
   useTool: (toolId: string) => void
@@ -124,6 +141,9 @@ interface GameState {
   
   // Get RNG for current run
   getRNG: () => RNG
+  
+  // Score calculation
+  getFinalScore: () => number
 }
 
 /** Generate a unique run ID */
@@ -160,20 +180,38 @@ const selectTargets = (levelIndex: number, runId: string, difficulty: Difficulty
   }))
 }
 
-/** Generate tools for the chest */
+/** Select decoys for a round using seeded RNG */
+const selectDecoys = (levelIndex: number, runId: string, difficulty: Difficulty): Decoy[] => {
+  const level = LEVELS[levelIndex]
+  const seed = createGameSeed(level.id, runId + '_decoys')
+  const rng = createRNG(seed)
+  const settings = DIFFICULTY_SETTINGS[difficulty]
+  
+  // Sample required number of decoys from candidates
+  const candidateDecoys = level.candidateDecoys || []
+  const selectedDecoys = rng.sample(candidateDecoys, Math.min(settings.decoyCount, candidateDecoys.length))
+  
+  // Reset revealed state and apply difficulty hold time
+  return selectedDecoys.map((decoy, index) => ({
+    ...decoy,
+    id: `decoy_${index}_${decoy.type}`,
+    revealed: false,
+    holdSecondsRequired: settings.holdSeconds,
+  }))
+}
+
+/** Generate tools for the chest - only hint and reveal now */
 const generateChestTools = (levelIndex: number, runId: string, difficulty: Difficulty): Tool[] => {
   const level = LEVELS[levelIndex]
   const seed = createGameSeed(level.id, runId + '_tools')
   const rng = createRNG(seed)
-  const settings = DIFFICULTY_SETTINGS[difficulty]
   
-  const toolTypes: ToolType[] = ['hint', 'time_freeze', 'time_add', 'reveal']
+  const toolTypes: ToolType[] = ['hint', 'reveal']
   const tools: Tool[] = []
   
-  // Each tool has a chance to spawn (0-2 tools typically)
+  // Each tool has a chance to spawn
   for (const toolType of toolTypes) {
-    const spawnChance = level.toolSpawnChance * settings.toolSpawnMultiplier
-    if (rng.bool(spawnChance * 0.5)) { // Roughly 0-2 tools per chest
+    if (rng.bool(level.toolSpawnChance * 0.7)) {
       tools.push({
         id: generateToolId(),
         ...TOOL_DEFINITIONS[toolType],
@@ -197,17 +235,23 @@ const generateChestTools = (levelIndex: number, runId: string, difficulty: Diffi
 export const useGameStore = create<GameState>()(
   subscribeWithSelector((set, get) => ({
     // Initial state
-    phase: 'menu',
+    phase: 'name_entry',
     difficulty: 'normal',
+    playerName: '',
+    sessionId: generateRunId(),
     currentLevelIndex: 0,
     runId: generateRunId(),
     seed: 0,
-    timeRemaining: 60,
-    timerFrozen: false,
-    freezeEndTime: 0,
+    
+    // Score-based timing
+    startTime: 0,
+    timeElapsed: 0,
+    wrongSelections: 0,
+    
     targets: [],
     foundCount: 0,
     requiredCount: 5,
+    decoys: [],
     inventory: [],
     toasts: [],
     hintedTargetId: null,
@@ -225,6 +269,7 @@ export const useGameStore = create<GameState>()(
     
     // Interaction state (set by InteractRaycaster)
     hoveredTarget: null,
+    hoveredDecoy: null,
     holdProgress: 0,
     nearChest: false,
 
@@ -234,22 +279,24 @@ export const useGameStore = create<GameState>()(
     setDifficulty: (difficulty) => set({ difficulty }),
 
     startGame: () => {
-      const { difficulty, currentLevelIndex } = get()
+      const { difficulty, currentLevelIndex, logGameStart } = get()
       const runId = generateRunId()
       const settings = DIFFICULTY_SETTINGS[difficulty]
       const level = LEVELS[currentLevelIndex]
       const seed = createGameSeed(level.id, runId)
       const targets = selectTargets(currentLevelIndex, runId, difficulty)
+      const decoys = selectDecoys(currentLevelIndex, runId, difficulty)
       const chestTools = generateChestTools(currentLevelIndex, runId, difficulty)
       
       set({
         phase: 'playing',
         runId,
         seed,
-        timeRemaining: settings.timerSeconds,
-        timerFrozen: false,
-        freezeEndTime: 0,
+        startTime: Date.now(),
+        timeElapsed: 0,
+        wrongSelections: 0,
         targets,
+        decoys,
         foundCount: 0,
         requiredCount: settings.targetCount,
         inventory: [],
@@ -263,6 +310,9 @@ export const useGameStore = create<GameState>()(
         mobileGameStarted: false, // Reset for new game
         mobileJoystick: { x: 0, y: 0 },
       })
+      
+      // Log game start
+      logGameStart()
     },
 
     pauseGame: () => {
@@ -273,9 +323,14 @@ export const useGameStore = create<GameState>()(
     },
 
     resumeGame: () => {
-      const { phase } = get()
+      const { phase, startTime, timeElapsed } = get()
       if (phase === 'paused') {
-        set({ phase: 'playing' })
+        // Adjust start time to account for pause duration
+        const pauseDuration = (Date.now() - startTime) / 1000 - timeElapsed
+        set({ 
+          phase: 'playing',
+          startTime: startTime + pauseDuration * 1000,
+        })
       }
     },
 
@@ -301,11 +356,11 @@ export const useGameStore = create<GameState>()(
       })
     },
 
-    // Timer
+    // Timer - now counts UP instead of down
     tick: (delta) => {
       const state = get()
       
-      // Skip if not playing or in transition
+      // Skip if not playing
       if (state.phase !== 'playing') {
         return
       }
@@ -315,14 +370,6 @@ export const useGameStore = create<GameState>()(
       // Mobile: requires mobileGameStarted flag
       const isActive = state.isMobileDevice ? state.mobileGameStarted : state.isPointerLocked
       if (!isActive) {
-        return
-      }
-      
-      // Handle frozen timer
-      if (state.timerFrozen) {
-        if (Date.now() >= state.freezeEndTime) {
-          set({ timerFrozen: false })
-        }
         return
       }
       
@@ -336,33 +383,11 @@ export const useGameStore = create<GameState>()(
         set({ revealQuadrant: null })
       }
       
-      const newTime = Math.max(0, state.timeRemaining - delta)
-      set({ timeRemaining: newTime })
+      // Count UP - calculate elapsed time
+      const newTimeElapsed = (Date.now() - state.startTime) / 1000
+      set({ timeElapsed: newTimeElapsed })
       
-      // Game over check - trigger ending transition
-      if (newTime <= 0) {
-        // Enter ending phase for transition effect
-        set({ phase: 'ending' })
-        // Transition to lost after delay
-        setTimeout(() => {
-          set({ phase: 'lost' })
-        }, 1500)
-      }
-    },
-
-    addTime: (seconds) => {
-      set((state) => ({
-        timeRemaining: state.timeRemaining + seconds,
-      }))
-      get().addToast(`+${seconds} seconds!`, 'success')
-    },
-
-    freezeTime: (duration) => {
-      set({
-        timerFrozen: true,
-        freezeEndTime: Date.now() + duration * 1000,
-      })
-      get().addToast('TIME FROZEN!', 'info')
+      // No game over check - game only ends when all targets found
     },
 
     // Targets
@@ -382,10 +407,11 @@ export const useGameStore = create<GameState>()(
       
       get().addToast(`67 FOUND! (${newFoundCount}/${state.requiredCount})`, 'success')
       
-      // Win check
+      // Win check - only condition now is finding all targets
       if (newFoundCount >= state.requiredCount) {
         setTimeout(() => {
           set({ phase: 'won' })
+          get().logGameEnd('won')
         }, 500)
       }
     },
@@ -395,6 +421,24 @@ export const useGameStore = create<GameState>()(
         hintedTargetId: targetId,
         hintEndTime: Date.now() + duration * 1000,
       })
+    },
+
+    // Decoys
+    selectDecoy: (decoyId) => {
+      const state = get()
+      const decoyIndex = state.decoys.findIndex((d) => d.id === decoyId)
+      if (decoyIndex === -1 || state.decoys[decoyIndex].revealed) return
+      
+      // Mark as revealed
+      const newDecoys = [...state.decoys]
+      newDecoys[decoyIndex] = { ...newDecoys[decoyIndex], revealed: true }
+      
+      set({
+        decoys: newDecoys,
+        wrongSelections: state.wrongSelections + 1,
+      })
+      
+      state.addToast(`NOT A 67! (+${PENALTY_SECONDS}s penalty)`, 'warning')
     },
 
     // Tools
@@ -420,12 +464,6 @@ export const useGameStore = create<GameState>()(
           }
           break
         }
-        case 'time_freeze':
-          state.freezeTime(5)
-          break
-        case 'time_add':
-          state.addTime(10)
-          break
         case 'reveal': {
           // Calculate quadrant of nearest unfound
           const unfound = state.targets.filter((t) => !t.found)
@@ -510,19 +548,76 @@ export const useGameStore = create<GameState>()(
     setMobileJoystick: (input) => set({ mobileJoystick: input }),
     setMobileGameStarted: (started) => set({ mobileGameStarted: started }),
 
+    // Player name
+    setPlayerName: (name) => set({ playerName: name }),
+    
+    confirmNameEntry: () => {
+      set({ phase: 'menu' })
+    },
+
+    // Logging
+    logGameStart: () => {
+      const { playerName, sessionId, difficulty } = get()
+      const level = LEVELS[get().currentLevelIndex]
+      
+      fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: 'game_start',
+          playerName: playerName || 'Guest',
+          sessionId,
+          difficulty,
+          level: level.name,
+        }),
+      }).catch(err => console.warn('Failed to log game start:', err))
+    },
+    
+    logGameEnd: (result) => {
+      const { playerName, sessionId, difficulty, foundCount, requiredCount, timeElapsed, wrongSelections } = get()
+      const level = LEVELS[get().currentLevelIndex]
+      const finalScore = get().getFinalScore()
+      
+      fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: 'game_end',
+          playerName: playerName || 'Guest',
+          sessionId,
+          difficulty,
+          level: level.name,
+          result,
+          targetsFound: foundCount,
+          requiredCount,
+          timeElapsed: Math.round(timeElapsed * 10) / 10,
+          wrongSelections,
+          finalScore: Math.round(finalScore * 10) / 10,
+        }),
+      }).catch(err => console.warn('Failed to log game end:', err))
+    },
+
     // Get RNG for current run (for deterministic operations)
     getRNG: () => {
       const { seed } = get()
       return createRNG(seed)
+    },
+    
+    // Calculate final score: timeElapsed + (wrongSelections * PENALTY_SECONDS)
+    // Lower is better!
+    getFinalScore: () => {
+      const { timeElapsed, wrongSelections } = get()
+      return timeElapsed + (wrongSelections * PENALTY_SECONDS)
     },
   }))
 )
 
 // Export selector hooks for common operations
 export const useGamePhase = () => useGameStore((s) => s.phase)
-export const useTimeRemaining = () => useGameStore((s) => s.timeRemaining)
-export const useTimerFrozen = () => useGameStore((s) => s.timerFrozen)
+export const useTimeElapsed = () => useGameStore((s) => s.timeElapsed)
+export const useWrongSelections = () => useGameStore((s) => s.wrongSelections)
 export const useTargets = () => useGameStore((s) => s.targets)
+export const useDecoys = () => useGameStore((s) => s.decoys)
 export const useFoundCount = () => useGameStore((s) => s.foundCount)
 export const useInventory = () => useGameStore((s) => s.inventory)
 export const useDifficulty = () => useGameStore((s) => s.difficulty)
@@ -537,3 +632,8 @@ export const useIsMobile = () => useGameStore((s) => s.isMobileDevice)
 export const useMobileJoystick = () => useGameStore((s) => s.mobileJoystick)
 export const useMobileGameStarted = () => useGameStore((s) => s.mobileGameStarted)
 
+// Player selectors
+export const usePlayerName = () => useGameStore((s) => s.playerName)
+
+// Score selector
+export const useFinalScore = () => useGameStore((s) => s.getFinalScore())
