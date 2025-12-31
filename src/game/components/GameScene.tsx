@@ -1,17 +1,18 @@
 /**
  * GameScene.tsx - Main 3D Scene Component
- * Renders the room, props, targets, and player
+ * Renders the room, props, targets, decoys, and player
  */
 
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { LevelConfig } from '../types'
-import { useGameStore, useGamePhase, useTargets, useHintedTargetId } from '../state'
+import { useGameStore, useGamePhase, useTargets, useDecoys, useHintedTargetId } from '../state'
 import { PlayerController } from './PlayerController'
 import { InteractRaycaster } from './InteractRaycaster'
 import { RoomMesh } from './RoomMesh'
 import { TargetMesh } from './TargetMesh'
+import { DecoyMesh } from './DecoyMesh'
 import { PropMesh } from './PropMesh'
 import { Chest } from './Chest'
 import { HintBeacon } from './HintBeacon'
@@ -26,6 +27,7 @@ interface GameSceneProps {
 export function GameScene({ level }: GameSceneProps) {
   const phase = useGamePhase()
   const targets = useTargets()
+  const decoys = useDecoys()
   const hintedTargetId = useHintedTargetId()
   const tick = useGameStore((s) => s.tick)
   
@@ -83,6 +85,13 @@ export function GameScene({ level }: GameSceneProps) {
         ))}
       </group>
       
+      {/* Decoys */}
+      <group>
+        {decoys.map((decoy) => (
+          <DecoyMesh key={decoy.id} decoy={decoy} />
+        ))}
+      </group>
+      
       {/* Tool Chest */}
       <group ref={chestRef}>
         <Chest position={level.chestPosition} />
@@ -109,4 +118,3 @@ export function GameScene({ level }: GameSceneProps) {
     </>
   )
 }
-

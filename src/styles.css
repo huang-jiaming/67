@@ -266,6 +266,28 @@ body {
   color: var(--color-success);
 }
 
+/* Wrong selections counter */
+.wrong-counter {
+  position: absolute;
+  top: 85px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-danger);
+  background: rgba(0,0,0,0.5);
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  border: 2px solid var(--color-danger);
+  animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(-50%); }
+  25% { transform: translateX(-50%) translateX(-5px); }
+  75% { transform: translateX(-50%) translateX(5px); }
+}
+
 /* Crosshair */
 .crosshair {
   position: absolute;
@@ -875,6 +897,12 @@ html, body {
   .found-counter {
     font-size: 1.2rem;
     padding: 0.3rem 0.6rem;
+  }
+  
+  /* Wrong counter on mobile */
+  .wrong-counter {
+    top: 70px;
+    font-size: 0.8rem;
   }
   
   /* Smaller tool slots */

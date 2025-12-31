@@ -5,11 +5,11 @@
 
 import { Vector3Tuple } from 'three'
 
-/** Difficulty level affects timer, hold time, and target visibility */
+/** Difficulty level affects hold time and decoy count */
 export type Difficulty = 'easy' | 'normal' | 'hard'
 
-/** Current phase of the game */
-export type GamePhase = 'menu' | 'playing' | 'paused' | 'won' | 'lost' | 'ending'
+/** Current phase of the game - no more 'lost' or 'ending' since no timer */
+export type GamePhase = 'name_entry' | 'menu' | 'playing' | 'paused' | 'won'
 
 /** Types of "67" reference targets that can appear in the room */
 export type TargetType =
@@ -23,6 +23,14 @@ export type TargetType =
   | 'angle_blocks'       // Two blocks forming "67" from specific angle
   | 'scoreboard'         // Scoreboard flashing "67"
   | 'tv_subtitle'        // TV showing "six seven" text
+
+/** Decoy types - items that look like 67 but aren't */
+export type DecoyType =
+  | 'wrong_clock'        // Shows 7:06, 6:17, etc.
+  | 'wrong_page'         // Page 76, 97, 167, etc.
+  | 'wrong_note'         // Note with 76, 97, etc.
+  | 'wrong_price'        // $7.60, $6.17, etc.
+  | 'wrong_calendar'     // 7/6, 6/17, etc.
 
 /** A "67" target that players must find */
 export interface Target {
@@ -41,8 +49,21 @@ export interface Target {
   hint?: string                // Optional hint text
 }
 
-/** Tool types available in the game */
-export type ToolType = 'hint' | 'time_freeze' | 'time_add' | 'reveal'
+/** A decoy item that wastes player's time */
+export interface Decoy {
+  id: string
+  type: DecoyType
+  position: Vector3Tuple
+  rotation?: Vector3Tuple
+  scale?: Vector3Tuple
+  revealed: boolean           // True after player selects it (wrong)
+  displayValue: string        // What it shows (e.g., "76", "7:06")
+  interactRadius: number
+  holdSecondsRequired: number
+}
+
+/** Tool types available in the game - removed time-based tools */
+export type ToolType = 'hint' | 'reveal'
 
 /** A tool/powerup in player inventory */
 export interface Tool {
@@ -66,7 +87,8 @@ export interface LevelConfig {
   ceilingColor: string
   accentColor: string
   props: PropConfig[]             // Static decorative props
-  candidateTargets: Target[]      // All possible target placements
+  candidateTargets: Target[]      // Correct 67 items
+  candidateDecoys: Decoy[]        // Wrong items (decoys)
   chestPosition: Vector3Tuple     // Tool chest location
   toolSpawnChance: number         // 0-1, chance of each tool spawning
   ambientLight: number            // Ambient light intensity
@@ -83,55 +105,42 @@ export interface PropConfig {
   color?: string
 }
 
-/** Difficulty settings */
+/** Difficulty settings - score-based gameplay */
 export interface DifficultySettings {
-  timerSeconds: number
-  holdSeconds: number
-  targetCount: number
-  toolSpawnMultiplier: number
+  holdSeconds: number       // Time to hold to confirm selection
+  targetCount: number       // Number of targets to find
+  decoyCount: number        // Number of decoys to spawn
 }
 
 /** Difficulty configurations */
 export const DIFFICULTY_SETTINGS: Record<Difficulty, DifficultySettings> = {
   easy: {
-    timerSeconds: 90,
     holdSeconds: 3,
     targetCount: 5,
-    toolSpawnMultiplier: 1.5,
+    decoyCount: 2,          // Fewer decoys on easy
   },
   normal: {
-    timerSeconds: 60,
-    holdSeconds: 5,
+    holdSeconds: 4,
     targetCount: 5,
-    toolSpawnMultiplier: 1.0,
+    decoyCount: 4,          // Moderate decoys
   },
   hard: {
-    timerSeconds: 45,
     holdSeconds: 5,
     targetCount: 5,
-    toolSpawnMultiplier: 0.5,
+    decoyCount: 6,          // More decoys on hard
   },
 }
 
-/** Tool definitions */
+/** Penalty seconds per wrong selection */
+export const PENALTY_SECONDS = 10
+
+/** Tool definitions - only hint and reveal remain */
 export const TOOL_DEFINITIONS: Record<ToolType, Omit<Tool, 'id'>> = {
   hint: {
     type: 'hint',
     name: 'Hint',
     icon: '💡',
     description: 'Highlights the nearest unfound target for 5 seconds',
-  },
-  time_freeze: {
-    type: 'time_freeze',
-    name: 'Time Freeze',
-    icon: '❄️',
-    description: 'Pauses the timer for 5 seconds',
-  },
-  time_add: {
-    type: 'time_add',
-    name: 'Time Add',
-    icon: '⏰',
-    description: 'Adds 10 seconds to the timer',
   },
   reveal: {
     type: 'reveal',

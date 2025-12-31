@@ -1,13 +1,13 @@
 /**
  * HUD.tsx - Heads-Up Display
- * In-game overlay showing timer, found count, inventory, and prompts
+ * In-game overlay showing elapsed time, found count, wrong selections, inventory, and prompts
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import {
   useGameStore,
-  useTimeRemaining,
-  useTimerFrozen,
+  useTimeElapsed,
+  useWrongSelections,
   useFoundCount,
   useInventory,
   useToasts,
@@ -15,16 +15,17 @@ import {
   useCurrentLevel,
   useIsMobile,
 } from '../state'
+import { PENALTY_SECONDS } from '../types'
 import { HoldProgressUI } from './HoldProgressUI'
 import { ChestUI } from './Chest'
-import { playToolUse, playTimerWarning, playTimeFreeze, playTimeAdd, playButtonClick } from './Sfx'
+import { playToolUse, playButtonClick } from './Sfx'
 
 /**
  * Main HUD component
  */
 export function HUD() {
-  const timeRemaining = useTimeRemaining()
-  const timerFrozen = useTimerFrozen()
+  const timeElapsed = useTimeElapsed()
+  const wrongSelections = useWrongSelections()
   const foundCount = useFoundCount()
   const requiredCount = useGameStore((s) => s.requiredCount)
   const inventory = useInventory()
@@ -35,25 +36,14 @@ export function HUD() {
   const chestOpen = useGameStore((s) => s.chestOpen)
   const nearChest = useGameStore((s) => s.nearChest)
   const hoveredTarget = useGameStore((s) => s.hoveredTarget)
+  const hoveredDecoy = useGameStore((s) => s.hoveredDecoy)
   const holdProgress = useGameStore((s) => s.holdProgress)
   const useTool = useGameStore((s) => s.useTool)
   const isMobile = useIsMobile()
   const pauseGame = useGameStore((s) => s.pauseGame)
   const openChest = useGameStore((s) => s.openChest)
   
-  // Play warning sound when time is low
-  const lastWarningRef = useRef(0)
-  useEffect(() => {
-    if (timeRemaining <= 10 && timeRemaining > 0 && !timerFrozen) {
-      const second = Math.floor(timeRemaining)
-      if (second !== lastWarningRef.current) {
-        lastWarningRef.current = second
-        playTimerWarning()
-      }
-    }
-  }, [timeRemaining, timerFrozen])
-  
-  // Format time as MM:SS
+  // Format time as MM:SS (counting up)
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
@@ -70,17 +60,7 @@ export function HUD() {
       if (keyNum >= 1 && keyNum <= 4) {
         const tool = inventory[keyNum - 1]
         if (tool) {
-          // Play appropriate sound
-          switch (tool.type) {
-            case 'time_freeze':
-              playTimeFreeze()
-              break
-            case 'time_add':
-              playTimeAdd()
-              break
-            default:
-              playToolUse()
-          }
+          playToolUse()
           useTool(tool.id)
         }
       }
@@ -90,12 +70,8 @@ export function HUD() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [inventory, useTool, chestOpen])
   
-  // Determine timer state
-  const timerClass = timerFrozen
-    ? 'timer frozen'
-    : timeRemaining <= 10
-    ? 'timer danger'
-    : 'timer'
+  // Check if hovering over something
+  const isHoveringItem = hoveredTarget || hoveredDecoy
   
   return (
     <div className="hud">
@@ -104,11 +80,17 @@ export function HUD() {
         📍 Room {currentLevelIndex + 1}: {currentLevel.name}
       </div>
       
-      {/* Timer */}
-      <div className={timerClass}>
-        {timerFrozen ? '❄️ ' : '⏱️ '}
-        {formatTime(timeRemaining)}
+      {/* Timer - now shows elapsed time (counting up) */}
+      <div className="timer">
+        ⏱️ {formatTime(timeElapsed)}
       </div>
+      
+      {/* Wrong selections counter */}
+      {wrongSelections > 0 && (
+        <div className="wrong-counter">
+          ❌ {wrongSelections} wrong (+{wrongSelections * PENALTY_SECONDS}s)
+        </div>
+      )}
       
       {/* Found counter */}
       <div className="found-counter">
@@ -116,12 +98,12 @@ export function HUD() {
       </div>
       
       {/* Crosshair */}
-      <div className={`crosshair ${hoveredTarget ? 'active' : ''}`} />
+      <div className={`crosshair ${isHoveringItem ? 'active' : ''}`} />
       
       {/* Hold progress */}
       <HoldProgressUI
         progress={holdProgress}
-        isActive={!!hoveredTarget && holdProgress > 0}
+        isActive={!!isHoveringItem && holdProgress > 0}
       />
       
       {/* Tools inventory */}
@@ -160,13 +142,6 @@ export function HUD() {
       {revealQuadrant && (
         <div className="quadrant-hint">
           🔍 Look {revealQuadrant.toUpperCase()}!
-        </div>
-      )}
-      
-      {/* Time frozen overlay */}
-      {timerFrozen && (
-        <div className="time-frozen-overlay">
-          ❄️ TIME FROZEN ❄️
         </div>
       )}
       
@@ -229,4 +204,3 @@ export function HUD() {
     </div>
   )
 }
-
