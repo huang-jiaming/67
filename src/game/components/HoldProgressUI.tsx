@@ -16,122 +16,147 @@ export function HoldProgressUI({ progress, isActive }: HoldProgressUIProps) {
     return null
   }
   
-  // SVG circle parameters for background progress ring
-  const radius = 32
-  const circumference = 2 * Math.PI * radius
-  const strokeDashoffset = circumference * (1 - progress)
-  
-  // Color interpolation from white to gold as progress increases
-  const hue = 45 // Gold
-  const saturation = Math.round(progress * 100)
-  const lightness = 60 + (1 - progress) * 30
-  const strokeColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`
-  
   // Calculate swing animation speed based on progress (faster as we get closer)
-  const swingDuration = 0.3 - progress * 0.15 // 0.3s to 0.15s
+  const swingDuration = 0.4 - progress * 0.25 // 0.4s to 0.15s
+  
+  // Progress bar width
+  const barWidth = progress * 100
+  
+  // Color based on progress
+  const barColor = progress > 0.8 ? '#FFD700' : progress > 0.5 ? '#FFA500' : '#4ECDC4'
   
   return (
-    <div className="hold-progress">
-      <svg viewBox="0 0 80 80">
-        {/* Background circle */}
-        <circle
-          className="bg"
-          cx="40"
-          cy="40"
-          r={radius}
-        />
-        {/* Progress circle */}
-        <circle
-          className="progress"
-          cx="40"
-          cy="40"
-          r={radius}
-          style={{
-            strokeDasharray: circumference,
-            strokeDashoffset,
-            stroke: strokeColor,
-          }}
-        />
-      </svg>
-      
+    <div className="hold-progress" style={{
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: '120px',
+      height: '120px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      pointerEvents: 'none',
+    }}>
       {/* Pickaxe icon with swing animation */}
       <div 
-        className="pickaxe-container"
         style={{
+          width: '60px',
+          height: '60px',
           animation: `pickaxeSwing ${swingDuration}s ease-in-out infinite`,
+          transformOrigin: 'bottom right',
         }}
       >
         <svg 
-          viewBox="0 0 24 24" 
-          className="pickaxe-icon"
+          viewBox="0 0 64 64" 
           style={{
-            filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.5))`,
+            width: '100%',
+            height: '100%',
+            filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.5))',
           }}
         >
-          {/* Pickaxe head */}
-          <path 
-            d="M14.5 3L13 1.5L4.5 10L6 11.5L14.5 3Z" 
-            fill="#6B7280"
-            stroke="#374151"
-            strokeWidth="0.5"
-          />
-          <path 
-            d="M11 6.5L9.5 5L1 13.5L2.5 15L11 6.5Z" 
-            fill="#6B7280"
-            stroke="#374151"
-            strokeWidth="0.5"
-          />
           {/* Pickaxe handle */}
-          <path 
-            d="M12 12L22 22" 
-            stroke="#8B4513"
-            strokeWidth="3"
+          <line 
+            x1="20" y1="20" 
+            x2="58" y2="58" 
+            stroke="#5D3A1A"
+            strokeWidth="6"
             strokeLinecap="round"
           />
+          <line 
+            x1="20" y1="20" 
+            x2="58" y2="58" 
+            stroke="#8B5A2B"
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
+          
+          {/* Pickaxe head - left prong */}
           <path 
-            d="M12 12L22 22" 
-            stroke="#A0522D"
+            d="M8 4 L20 20 L12 24 L2 10 Z" 
+            fill="#71717A"
+            stroke="#52525B"
+            strokeWidth="1"
+          />
+          
+          {/* Pickaxe head - right prong */}
+          <path 
+            d="M4 8 L20 20 L24 12 L10 2 Z" 
+            fill="#A1A1AA"
+            stroke="#71717A"
+            strokeWidth="1"
+          />
+          
+          {/* Metal shine */}
+          <path 
+            d="M6 6 L14 14" 
+            stroke="rgba(255,255,255,0.4)"
             strokeWidth="2"
             strokeLinecap="round"
           />
-          {/* Sparkle effect when near completion */}
-          {progress > 0.7 && (
+          
+          {/* Sparkles when near completion */}
+          {progress > 0.6 && (
             <>
-              <circle cx="6" cy="8" r="1" fill="#FFD700" opacity={progress > 0.9 ? 1 : 0.6}>
-                <animate attributeName="opacity" values="1;0.3;1" dur="0.3s" repeatCount="indefinite" />
+              <circle cx="8" cy="16" r="2" fill="#FFD700">
+                <animate attributeName="opacity" values="1;0.2;1" dur="0.2s" repeatCount="indefinite" />
+                <animate attributeName="r" values="2;3;2" dur="0.3s" repeatCount="indefinite" />
               </circle>
-              <circle cx="4" cy="11" r="0.8" fill="#FFD700" opacity={progress > 0.85 ? 1 : 0.4}>
-                <animate attributeName="opacity" values="0.5;1;0.5" dur="0.4s" repeatCount="indefinite" />
+              <circle cx="16" cy="8" r="2" fill="#FFD700">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="0.25s" repeatCount="indefinite" />
+              </circle>
+            </>
+          )}
+          {progress > 0.85 && (
+            <>
+              <circle cx="4" cy="12" r="1.5" fill="#FFFFFF">
+                <animate attributeName="opacity" values="1;0;1" dur="0.15s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="12" cy="4" r="1.5" fill="#FFFFFF">
+                <animate attributeName="opacity" values="0;1;0" dur="0.15s" repeatCount="indefinite" />
               </circle>
             </>
           )}
         </svg>
       </div>
       
-      {/* Progress percentage */}
-      <div className="label" style={{ bottom: '-25px', top: 'auto' }}>
+      {/* Progress bar below pickaxe */}
+      <div style={{
+        width: '80px',
+        height: '8px',
+        background: 'rgba(0,0,0,0.5)',
+        borderRadius: '4px',
+        marginTop: '8px',
+        overflow: 'hidden',
+        border: '2px solid rgba(255,255,255,0.3)',
+      }}>
+        <div style={{
+          width: `${barWidth}%`,
+          height: '100%',
+          background: barColor,
+          borderRadius: '2px',
+          transition: 'width 0.1s ease-out',
+          boxShadow: progress > 0.7 ? `0 0 8px ${barColor}` : 'none',
+        }} />
+      </div>
+      
+      {/* Percentage text */}
+      <div style={{
+        marginTop: '4px',
+        fontFamily: 'var(--font-display)',
+        fontSize: '0.9rem',
+        color: 'white',
+        textShadow: '2px 2px 0 rgba(0,0,0,0.5)',
+      }}>
         {Math.round(progress * 100)}%
       </div>
       
-      {/* Inline styles for animation */}
+      {/* Inline keyframes */}
       <style>{`
         @keyframes pickaxeSwing {
-          0%, 100% { transform: translate(-50%, -50%) rotate(-30deg); }
-          50% { transform: translate(-50%, -50%) rotate(15deg); }
-        }
-        
-        .pickaxe-container {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 40px;
-          height: 40px;
-          transform-origin: center center;
-        }
-        
-        .pickaxe-icon {
-          width: 100%;
-          height: 100%;
+          0%, 100% { transform: rotate(-25deg); }
+          50% { transform: rotate(25deg); }
         }
       `}</style>
     </div>
