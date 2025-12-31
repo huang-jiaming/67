@@ -148,7 +148,7 @@ export function GameRoot() {
             <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>
               {isMobile 
                 ? 'Use joystick to move, drag screen to look' 
-                : 'Timer starts when you click'}
+                : 'WASD to move, mouse to look'}
             </div>
           </div>
         )

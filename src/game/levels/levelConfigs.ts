@@ -53,10 +53,10 @@ const LEVEL_BEDROOM: LevelConfig = {
     {
       id: 'book_shelf',
       type: 'book_page',
-      position: [-5.3, 1.5, 1],
-      rotation: [0, Math.PI/2, 0],
+      position: [-4.5, 1.5, 1],
+      rotation: [0, Math.PI * 0.4, 0], // Angled toward room center
       found: false,
-      interactRadius: 2.5,
+      interactRadius: 3,
       holdSecondsRequired: 5,
       hint: 'Someone left a book open...',
     },
@@ -64,10 +64,10 @@ const LEVEL_BEDROOM: LevelConfig = {
     {
       id: 'sticky_wardrobe',
       type: 'sticky_note',
-      position: [5.4, 1.8, 0.5],
-      rotation: [0, -Math.PI/2, 0],
+      position: [4.8, 1.8, 0.5],
+      rotation: [0, -Math.PI * 0.35, 0], // Angled toward room center
       found: false,
-      interactRadius: 2.5,
+      interactRadius: 3,
       holdSecondsRequired: 5,
       hint: 'There\'s a note on the wardrobe...',
     },
@@ -121,8 +121,8 @@ const LEVEL_BEDROOM: LevelConfig = {
     {
       id: 'tv_subtitle',
       type: 'tv_subtitle',
-      position: [-5.4, 2, -3],
-      rotation: [0, Math.PI/2, 0],
+      position: [-4.5, 2, -3],
+      rotation: [0, Math.PI * 0.4, 0], // Angled toward room center
       found: false,
       interactRadius: 4,
       holdSecondsRequired: 5,
@@ -258,10 +258,10 @@ const LEVEL_LIVING_ROOM: LevelConfig = {
     {
       id: 'clock_shelf',
       type: 'digital_clock',
-      position: [-6.3, 1.8, -1],
-      rotation: [0, Math.PI/2, 0],
+      position: [-5.5, 1.8, -1],
+      rotation: [0, Math.PI * 0.35, 0], // Angled toward room center
       found: false,
-      interactRadius: 3,
+      interactRadius: 3.5,
       holdSecondsRequired: 5,
       hint: 'What time does the clock show?',
     },
@@ -292,10 +292,10 @@ const LEVEL_LIVING_ROOM: LevelConfig = {
     {
       id: 'price_decoration',
       type: 'price_tag',
-      position: [6.3, 1.2, -2.5],
-      rotation: [0, -Math.PI/2, 0],
+      position: [5.5, 1.2, -2.5],
+      rotation: [0, -Math.PI * 0.35, 0], // Angled toward room center
       found: false,
-      interactRadius: 2.5,
+      interactRadius: 3,
       holdSecondsRequired: 5,
       hint: 'That decoration still has its price...',
     },
@@ -314,10 +314,10 @@ const LEVEL_LIVING_ROOM: LevelConfig = {
     {
       id: 'keypad_door',
       type: 'keypad',
-      position: [6.8, 1.5, 0],
-      rotation: [0, -Math.PI/2, 0],
+      position: [6, 1.5, 0],
+      rotation: [0, -Math.PI * 0.35, 0], // Angled toward room center
       found: false,
-      interactRadius: 2.5,
+      interactRadius: 3,
       holdSecondsRequired: 5,
       hint: 'What\'s the code on that keypad?',
     },
@@ -505,8 +505,8 @@ const LEVEL_CLASSROOM: LevelConfig = {
     {
       id: 'poster_class',
       type: 'phone_poster',
-      position: [7.8, 2, 0],
-      rotation: [0, -Math.PI/2, 0],
+      position: [7, 2, 0],
+      rotation: [0, -Math.PI * 0.35, 0], // Angled toward room center
       found: false,
       interactRadius: 4,
       holdSecondsRequired: 5,
@@ -516,14 +516,14 @@ const LEVEL_CLASSROOM: LevelConfig = {
     {
       id: 'angle_class',
       type: 'angle_blocks',
-      position: [-7, 1.5, 2],
-      rotation: [0, Math.PI/2, 0],
+      position: [-6, 1.5, 2],
+      rotation: [0, Math.PI * 0.35, 0], // Angled toward room center
       found: false,
-      interactRadius: 2,
+      interactRadius: 3,
       holdSecondsRequired: 5,
       vantageZone: {
-        position: [-4, 1.5, 2],
-        radius: 1,
+        position: [-3, 1.5, 2],
+        radius: 1.5,
       },
       hint: 'Those blocks look interesting from certain angles...',
     },
@@ -553,10 +553,10 @@ const LEVEL_CLASSROOM: LevelConfig = {
     {
       id: 'keypad_class',
       type: 'keypad',
-      position: [-7.8, 1.5, -3],
-      rotation: [0, Math.PI/2, 0],
+      position: [-7, 1.5, -3],
+      rotation: [0, Math.PI * 0.35, 0], // Angled toward room center
       found: false,
-      interactRadius: 2.5,
+      interactRadius: 3,
       holdSecondsRequired: 5,
       hint: 'The supply closet has a keypad...',
     },

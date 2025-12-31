@@ -329,7 +329,76 @@ body {
 }
 
 /* Hold Progress - Pickaxe Mining Indicator */
-/* Styles are now inline in HoldProgressUI.tsx for pickaxe animation */
+.hold-progress-pickaxe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.pickaxe-swing {
+  width: 70px;
+  height: 70px;
+  transform-origin: bottom right;
+  animation: pickaxeSwing 0.4s ease-in-out infinite;
+  filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));
+}
+
+.pickaxe-svg {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes pickaxeSwing {
+  0%, 100% { transform: rotate(-25deg); }
+  50% { transform: rotate(25deg); }
+}
+
+.pickaxe-progress-bar {
+  width: 80px;
+  height: 8px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 4px;
+  margin-top: 8px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+.pickaxe-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.1s ease-out;
+}
+
+.pickaxe-label {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: bold;
+  color: white;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+}
+
+/* Sparkle animations */
+.sparkle-1, .sparkle-2, .sparkle-3, .sparkle-4 {
+  animation: sparkle 0.3s ease-in-out infinite alternate;
+}
+
+.sparkle-2 { animation-delay: 0.1s; }
+.sparkle-3 { animation-delay: 0.15s; }
+.sparkle-4 { animation-delay: 0.2s; }
+
+@keyframes sparkle {
+  0% { opacity: 0.3; r: 1.5; }
+  100% { opacity: 1; r: 2.5; }
+}
 
 /* Tools Inventory */
 .tools-inventory {
