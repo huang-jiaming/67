@@ -16,12 +16,6 @@ export function applyToolEffect(toolType: ToolType): void {
     case 'hint':
       applyHintEffect()
       break
-    case 'time_freeze':
-      applyTimeFreezeEffect()
-      break
-    case 'time_add':
-      applyTimeAddEffect()
-      break
     case 'reveal':
       applyRevealEffect()
       break
@@ -46,24 +40,6 @@ function applyHintEffect(): void {
   const target = unfound[0]
   state.setHintedTarget(target.id, 5)
   state.addToast('Hint activated! Look for the beacon!', 'info')
-}
-
-/**
- * Time Freeze Tool: Pauses the timer for 5 seconds
- */
-function applyTimeFreezeEffect(): void {
-  const state = useGameStore.getState()
-  state.freezeTime(5)
-  // Toast is handled in freezeTime
-}
-
-/**
- * Time Add Tool: Adds 10 seconds to the timer
- */
-function applyTimeAddEffect(): void {
-  const state = useGameStore.getState()
-  state.addTime(10)
-  // Toast is handled in addTime
 }
 
 /**
@@ -115,10 +91,6 @@ export function getToolDescription(toolType: ToolType): string {
   switch (toolType) {
     case 'hint':
       return 'Shows the nearest unfound target with a beacon'
-    case 'time_freeze':
-      return 'Pauses the countdown timer for 5 seconds'
-    case 'time_add':
-      return 'Adds 10 seconds to the remaining time'
     case 'reveal':
       return 'Shows the direction of remaining targets'
     default:
@@ -133,14 +105,9 @@ export function getToolIcon(toolType: ToolType): string {
   switch (toolType) {
     case 'hint':
       return '💡'
-    case 'time_freeze':
-      return '❄️'
-    case 'time_add':
-      return '⏰'
     case 'reveal':
       return '🔍'
     default:
       return '❓'
   }
 }
-

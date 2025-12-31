@@ -357,7 +357,7 @@ export const useGameStore = create<GameState>()(
     },
 
     // Timer - now counts UP instead of down
-    tick: (delta) => {
+    tick: (_delta) => {
       const state = get()
       
       // Skip if not playing

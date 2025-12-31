@@ -4,7 +4,7 @@
  * Each room has candidate targets (correct 67s) and candidate decoys (wrong items)
  */
 
-import { LevelConfig, Decoy } from '../types'
+import { LevelConfig } from '../types'
 
 /**
  * Level 1: Kid's Bedroom
