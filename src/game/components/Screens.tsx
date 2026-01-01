@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import { useGameStore, useDifficulty, useTimeElapsed, useWrongSelections, useFoundCount, useCurrentLevel, useIsMobile, usePlayerName, useFinalScore } from '../state'
 import { Difficulty, PENALTY_SECONDS } from '../types'
 import { playButtonClick, playVictory } from './Sfx'
+import { shareNative, copyToClipboard, generateShareUrl, ShareData } from '../../lib/share'
 
 /**
  * Name Entry Screen - First screen shown
@@ -273,8 +274,13 @@ export function WinScreen() {
   const finalScore = useFinalScore()
   const foundCount = useFoundCount()
   const currentLevel = useCurrentLevel()
+  const playerName = usePlayerName()
+  const difficulty = useDifficulty()
   const nextLevel = useGameStore((s) => s.nextLevel)
   const goToMenu = useGameStore((s) => s.goToMenu)
+  const addToast = useGameStore((s) => s.addToast)
+  
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle')
   
   // Play victory sound on mount
   useEffect(() => {
@@ -303,6 +309,35 @@ export function WinScreen() {
   
   const rating = getScoreRating(finalScore)
   const penaltyTime = wrongSelections * PENALTY_SECONDS
+  
+  // Handle share score
+  const handleShare = async () => {
+    playButtonClick()
+    
+    const shareData: ShareData = {
+      playerName: playerName || 'Guest',
+      score: finalScore,
+      level: currentLevel.name,
+      difficulty,
+    }
+    
+    // Try native share first (mobile-friendly)
+    const shared = await shareNative(shareData)
+    
+    if (!shared) {
+      // Fallback to clipboard
+      const url = generateShareUrl(shareData)
+      const copied = await copyToClipboard(url)
+      
+      if (copied) {
+        setShareStatus('copied')
+        addToast('Link copied!', 'success')
+        setTimeout(() => setShareStatus('idle'), 2000)
+      } else {
+        addToast('Failed to copy link', 'warning')
+      }
+    }
+  }
   
   return (
     <div className="end-screen win">
@@ -350,6 +385,36 @@ export function WinScreen() {
       >
         Next Room →
       </button>
+      
+      <button
+        onClick={handleShare}
+        style={{
+          padding: '0.8rem 2rem',
+          margin: '0.5rem',
+          fontFamily: "'Fredoka One', cursive",
+          fontSize: '1.2rem',
+          background: shareStatus === 'copied' ? '#7bed9f' : '#667eea',
+          color: 'white',
+          border: '4px solid #2c3e50',
+          borderRadius: '12px',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          boxShadow: '4px 4px 0 rgba(0,0,0,0.2)',
+        }}
+        onMouseEnter={(e) => {
+          if (shareStatus === 'idle') {
+            e.currentTarget.style.background = '#764ba2'
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (shareStatus === 'idle') {
+            e.currentTarget.style.background = '#667eea'
+          }
+        }}
+      >
+        {shareStatus === 'copied' ? '✓ Copied!' : '🔗 Share Score'}
+      </button>
+      
       <button
         className="menu-btn"
         onClick={() => {
